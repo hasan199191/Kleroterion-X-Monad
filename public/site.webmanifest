@@ -1,10 +1,10 @@
 {
   "name": "Kleroterion X Monad",
   "short_name": "KXM",
-  "description": "Web3 Oyun Platformu",
+  "description": "Socaial Gamefi Platform",
   "icons": [
     {
-      "src": "/favicon/android-chrome-192x192.png",
+      "src": "/favicon/android-icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
