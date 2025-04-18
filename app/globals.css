@@ -1,0 +1,272 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #1a1a1a;
+  --foreground: #ffffff;
+  --card: #969696;
+  --card-foreground: #ffffff;
+  --border: #2d2d2d;
+  --input: #374151;
+  --ring: #8b5cf6;
+  --primary: #8b5cf6; /* Açık mor */
+  --primary-foreground: #ffffff; /* Buton yazı rengi beyaz */
+  --secondary: #6d28d9; /* Koyu mor (hover için) */
+  --secondary-foreground: #ffffff;
+  --muted: #374151;
+  --muted-foreground: #9ca3af;
+  --accent: #374151;
+  --accent-foreground: #ffffff;
+  --heading: #4ade80;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --radius: 0.5rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: "Space Mono", monospace;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--heading) !important;
+}
+
+[role="menu"],
+[role="dialog"] {
+  background-color: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  z-index: 50;
+}
+
+/* Buton stillerini güçlendirilmiş seçicilerle güncelliyoruz */
+button,
+.btn,
+[type="button"],
+.button,
+a[role="button"] {
+  background-color: var(--primary) !important; /* #8b5cf6 - Mor */
+  color: var(--primary-foreground) !important; /* #ffffff - Beyaz */
+  border: 1px solid var(--border);
+  transition: all 0.3s ease;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+}
+
+button:hover,
+.btn:hover,
+[type="button"]:hover,
+.button:hover,
+a[role="button"]:hover {
+  background-color: var(--secondary) !important; /* #6d28d9 - Koyu Mor */
+  box-shadow: 0 0 10px var(--primary);
+}
+
+/* Tailwind buton sınıflarını override et */
+.bg-white,
+.bg-background,
+.bg-foreground {
+  &[role="button"],
+  &.btn,
+  &.button {
+    background-color: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+  }
+}
+
+/* Landing page specific styles */
+.btn {
+  @apply rounded-lg font-semibold transition-all duration-300;
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.btn:hover {
+  background-color: var(--secondary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+.pool-card,
+.player-card {
+  background: linear-gradient(135deg, rgb(33, 33, 33) 0%, rgb(50, 50, 50) 100%);
+  border: 1px solid var(--border);
+  transition: all 0.3s ease;
+}
+
+.pool-card:hover,
+.player-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 15px rgb(190, 190, 190);
+}
+
+.arena-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .arena-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .arena-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
+@keyframes neonPulse {
+  0%,
+  100% {
+    text-shadow: 0 0 7px #4ade80, 0 0 10px #4ade80, 0 0 21px #4ade80;
+  }
+  50% {
+    text-shadow: 0 0 14px #4ade80, 0 0 20px #4ade80, 0 0 42px #4ade80;
+  }
+}
+
+.neon-text {
+  color: #4ade80;
+  animation: neonPulse 2s infinite;
+}
+
+/* Modal Styles */
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: linear-gradient(145deg, rgba(26, 26, 26, 0.95), rgba(38, 38, 38, 0.98));
+  border: 1px solid var(--primary);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.2), inset 0 0 20px rgba(139, 92, 246, 0.1);
+  animation: modalFade 0.3s ease-out;
+}
+
+@keyframes modalFade {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.font-spacemono {
+  font-family: 'Space Mono', monospace;
+}
+
+.fantasy-card-container {
+  perspective: 1000px;
+  transition: transform 0.3s ease;
+}
+
+.fantasy-card {
+  background: linear-gradient(135deg, #2a1b3d 0%, #1a0f26 100%);
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease;
+}
+
+.fantasy-card:hover {
+  transform: translateY(-5px) rotateX(5deg);
+}
+
+.fantasy-image-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.fantasy-image {
+  transition: transform 0.3s ease;
+}
+
+.fantasy-card:hover .fantasy-image {
+  transform: scale(1.05);
+}
+
+.fantasy-info {
+  background: linear-gradient(0deg, rgba(26, 15, 38, 0.95) 0%, rgba(26, 15, 38, 0.8) 100%);
+  backdrop-filter: blur(4px);
+}
+
+@keyframes pulse-green {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse {
+  animation: pulse-green 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Kullanıcının kendisi olduğunu gösteren kart stili */
+.border-red-300.bg-red-50 {
+  background-color: rgba(220, 38, 38, 0.1) !important; /* Daha koyu kırmızı arka plan */
+  border-color: rgba(220, 38, 38, 0.3) !important;
+}
+
+/* Kendisi olan kullanıcı için metin rengi */
+.border-red-300.bg-red-50 .text-red-600,
+.border-red-300.bg-red-50 p,
+.border-red-300.bg-red-50 span {
+  color: #ef4444 !important; /* Daha parlak kırmızı metin */
+}
+
+/* "You" etiketi için özel stil */
+.text-red-600 {
+  color: #ef4444 !important;
+  font-weight: 600;
+  background-color: rgba(239, 68, 68, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
