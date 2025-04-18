@@ -2,32 +2,20 @@ import type { Metadata } from "next"
 import "./globals.css"
 import Providers from "@/components/Providers"
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Kleroterion X Monad',
-  description: 'Kleroterion X Monad - Web3 Oyun Platformu',
+  description: 'Kleroterion X Monad - Social Gamefi Platform',
   icons: {
-    icon: [
-      {
-        url: '/favicon/favicon-32x32.png',
-        sizes: '32x32',
-        type: 'image/png',
-      },
-      {
-        url: '/favicon/favicon-16x16.png',
-        sizes: '16x16',
-        type: 'image/png',
-      }
-    ],
-    shortcut: '/favicon/favicon.ico',
+    icon: '/favicon/favicon.ico',
     apple: '/favicon/apple-touch-icon.png',
-    other: [
-      {
-        rel: 'mask-icon',
-        url: '/favicon/safari-pinned-tab.svg',
-      }
-    ]
+    shortcut: '/favicon/favicon.ico',
+    other: {
+      rel: 'apple-touch-icon',
+      url: '/favicon/apple-touch-icon.png'
+    }
   },
-} satisfies Metadata
+  manifest: '/site.webmanifest'
+}
 
 export default function RootLayout({
   children,
