@@ -3,8 +3,30 @@ import "./globals.css"
 import Providers from "@/components/Providers"
 
 export const metadata = {
-  title: "MonadZSurvive",
-  description: "The chosen enter the arena. The rest are written into the chain",
+  title: 'Kleroterion X Monad',
+  description: 'Kleroterion X Monad - Web3 Oyun Platformu',
+  icons: {
+    icon: [
+      {
+        url: '/favicon/favicon-32x32.png',
+        sizes: '32x32',
+        type: 'image/png',
+      },
+      {
+        url: '/favicon/favicon-16x16.png',
+        sizes: '16x16',
+        type: 'image/png',
+      }
+    ],
+    shortcut: '/favicon/favicon.ico',
+    apple: '/favicon/apple-touch-icon.png',
+    other: [
+      {
+        rel: 'mask-icon',
+        url: '/favicon/safari-pinned-tab.svg',
+      }
+    ]
+  },
 } satisfies Metadata
 
 export default function RootLayout({
