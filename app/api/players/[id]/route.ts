@@ -9,7 +9,8 @@ export async function GET(
   context: { params: { id: string } }
 ) {
   try {
-    const id = await Promise.resolve(context.params.id);
+    const params = await context.params;
+    const id = params.id;
     console.log('Twitter ID query:', id);
 
     const { data, error } = await supabase

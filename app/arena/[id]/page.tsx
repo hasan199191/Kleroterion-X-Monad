@@ -42,6 +42,36 @@ interface PoolDetails {
   candidatesToSelect?: number
 }
 
+// Safe contract call helper function
+const safeContractCall = async (method: string, ...args: any[]) => {
+  if (!contract) {
+    console.log("Contract is not initialized")
+    return null
+  }
+  
+  const maxRetries = 3
+  let retryCount = 0
+  
+  while (retryCount < maxRetries) {
+    try {
+      // @ts-ignore - Dynamic method call
+      return await contract[method](...args)
+    } catch (error) {
+      retryCount++
+      console.log(`Call to ${method} failed (${retryCount}/${maxRetries}):`, error)
+      
+      if (retryCount >= maxRetries) {
+        console.error(`Failed after ${maxRetries} retries`)
+        return null
+      }
+      
+      // Wait before retrying (increasing delay)
+      await new Promise(r => setTimeout(r, 1000 * retryCount))
+    }
+  }
+  return null
+}
+
 export default function ArenaDetailPage() {
   const { id } = useParams()
   const poolId = Number(id)
@@ -63,8 +93,8 @@ export default function ArenaDetailPage() {
   const { toast } = useToast()
 
   const [pool, setPool] = useState<PoolDetails | null>(null)
-  const [allPlayers, setAllPlayers] = useState<Player[]>([]) // Tüm oyuncuları saklayacak
-  const [displayedPlayers, setDisplayedPlayers] = useState<Player[]>([]) // Görüntülenen oyuncular
+  const [allPlayers, setAllPlayers] = useState<Player[]>([]) // Will store all players
+  const [displayedPlayers, setDisplayedPlayers] = useState<Player[]>([]) // Players being displayed
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([])
   const [remainingVotes, setRemainingVotes] = useState(3)
   const [totalVotingRights, setTotalVotingRights] = useState(3)
@@ -142,62 +172,89 @@ export default function ArenaDetailPage() {
     }
   }
 
-  // fetchAllPlayers fonksiyonunu güncelle
+  // Update fetchAllPlayers function
   const fetchAllPlayers = async () => {
     try {
-      const result = await getPoolPlayers(poolId)
-      const { playerService } = await import('@/services/playerService')
+      // Kontrat kontrolü ekle
+      if (!contract) {
+        console.log("Contract is not initialized yet, waiting...");
+        return [];
+      }
 
-      // Process active players with real vote counts
+      const result = await getPoolPlayers(poolId);
+      const { playerService } = await import('@/services/playerService');
+
+      // Process active players with error handling
       const activePlayers = await Promise.all(
         result.active.map(async (p) => {
-          const [playerInfo, voteCount] = await Promise.all([
-            playerService.getPlayerByWallet(p.address),
-            contract.candidateVotes(poolId, p.address)
-          ])
+          try {
+            const [playerInfo, voteCount] = await Promise.all([
+              playerService.getPlayerByWallet(p.address),
+              contract.candidateVotes(poolId, p.address).catch(err => {
+                console.error(`Error fetching votes for ${p.address}:`, err);
+                return 0;
+              })
+            ]);
 
-          // Convert vote count from BigNumber to number
-          const votes = voteCount ? Number(voteCount.toString()) : 0
-
-          console.log(`Vote count for ${p.address}:`, votes)
-
-          return {
-            ...p,
-            votes: votes,
-            isCurrentUser: p.address.toLowerCase() === account?.toLowerCase(),
-            twitter_username: playerInfo?.twitter_username,
-            profile_image: playerInfo?.profile_image
+            // Vote count handling
+            const votes = voteCount ? Number(voteCount.toString()) : 0;
+            
+            return {
+              ...p,
+              votes: votes,
+              isCurrentUser: p.address.toLowerCase() === account?.toLowerCase(),
+              twitter_username: playerInfo?.twitter_username,
+              profile_image: playerInfo?.profile_image
+            };
+          } catch (error) {
+            console.error(`Error processing player ${p.address}:`, error);
+            return {
+              ...p,
+              votes: 0,
+              isCurrentUser: p.address.toLowerCase() === account?.toLowerCase()
+            };
           }
         })
-      )
+      );
 
-      // Process eliminated players with real vote counts
+      // Benzer şekilde eliminatedPlayers için de hata yönetimi ekleyin
       const eliminatedPlayers = await Promise.all(
         result.eliminated.map(async (p) => {
-          const [playerInfo, voteCount] = await Promise.all([
-            playerService.getPlayerByWallet(p.address),
-            contract.candidateVotes(poolId, p.address)
-          ])
+          try {
+            const [playerInfo, voteCount] = await Promise.all([
+              playerService.getPlayerByWallet(p.address),
+              contract.candidateVotes(poolId, p.address).catch(err => {
+                console.error(`Error fetching votes for ${p.address}:`, err);
+                return 0;
+              })
+            ]);
 
-          const votes = voteCount ? Number(voteCount.toString()) : 0
+            const votes = voteCount ? Number(voteCount.toString()) : 0;
 
-          return {
-            ...p,
-            votes: votes,
-            isCurrentUser: p.address.toLowerCase() === account?.toLowerCase(),
-            twitter_username: playerInfo?.twitter_username,
-            profile_image: playerInfo?.profile_image
+            return {
+              ...p,
+              votes: votes,
+              isCurrentUser: p.address.toLowerCase() === account?.toLowerCase(),
+              twitter_username: playerInfo?.twitter_username,
+              profile_image: playerInfo?.profile_image
+            };
+          } catch (error) {
+            console.error(`Error processing player ${p.address}:`, error);
+            return {
+              ...p,
+              votes: 0,
+              isCurrentUser: p.address.toLowerCase() === account?.toLowerCase()
+            };
           }
         })
-      )
+      );
 
-      const players = [...activePlayers, ...eliminatedPlayers]
-      console.log("All players with vote counts:", players)
-      setAllPlayers(players)
-      return players
+      const players = [...activePlayers, ...eliminatedPlayers];
+      setAllPlayers(players);
+      return players;
     } catch (error) {
-      console.error("Error fetching players:", error)
-      return []
+      console.error("Error fetching players:", error);
+      return [];
     }
   }
 
@@ -229,25 +286,25 @@ export default function ArenaDetailPage() {
     return () => clearInterval(interval)
   }, [contract, poolId, allPlayers])
 
-  // Aktif sekmeye göre görüntülenecek oyuncuları güncelle
+  // Update displayed players based on active tab
   const updateDisplayedPlayers = (tab) => {
     if (!allPlayers || allPlayers.length === 0) return
 
     switch (tab) {
       case "voting":
-        // Voting sekmesinde tüm oyuncuları göster
+        // Show all players in the voting tab
         setDisplayedPlayers([...allPlayers])
         break
 
       case "arena":
-        // Arena sekmesinde en çok oy alan ve owner'ın belirlediği sayıda kullanıcıyı göster
+        // Show top voted players based on owner-defined count
         const candidateCount = pool?.candidatesToSelect || 10
         const topVotedPlayers = [...allPlayers].sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, candidateCount)
         setDisplayedPlayers(topVotedPlayers)
         break
 
       case "results":
-        // Results sekmesinde tüm oyuncuları göster (havuz tamamlandıysa)
+        // Show all players in results tab (if pool is completed)
         setDisplayedPlayers([...allPlayers])
         break
 
@@ -266,11 +323,11 @@ export default function ArenaDetailPage() {
         if (contract) {
           const poolData = await contract.pools(poolId)
 
-          // Contract'tan gelen gerçek değerleri kullan
+          // Use real values from contract
           setPool({
             id: poolId,
             state: state,
-            // BigNumber'ı ETH'ye çevir
+            // Convert BigNumber to ETH
             entranceFee: ethers.formatEther(poolData.poolEntranceFee),
             ticketPrice: ethers.formatEther(poolData.poolTicketPrice),
             activePlayers: players.filter((p) => p.isActive).length,
@@ -306,7 +363,7 @@ export default function ArenaDetailPage() {
     getTopTenPlayersWithRanks,
   ])
 
-  // Tab değiştiğinde görüntülenen oyuncuları güncelle
+  // Update displayed players when tab changes
   useEffect(() => {
     updateDisplayedPlayers(activeTab)
   }, [activeTab])
@@ -467,7 +524,7 @@ export default function ArenaDetailPage() {
     if (!pool || !contract) return
 
     try {
-      // Contract'tan entrance fee'yi al
+      // Get entrance fee from contract
       const poolData = await contract.pools(poolId)
       const entranceFee = poolData.poolEntranceFee
 
@@ -546,14 +603,14 @@ export default function ArenaDetailPage() {
       return false
     }
 
-    // Havuz durumunu kontrol ederken büyük/küçük harf duyarlılığını kaldıralım
+    // Case-insensitive state check
     const stateMatches = pool.state.toLowerCase() === "registration and voting".toLowerCase()
     console.log("canVote: pool state matches:", stateMatches, "current state:", pool.state)
 
     const hasVotes = remainingVotes > 0
     console.log("canVote: user has votes:", hasVotes, "remaining votes:", remainingVotes)
 
-    // isPlayerInPool kontrolünü kaldırdık - artık havuza katılmamış kullanıcılar da oy kullanabilir
+    // Removed isPlayerInPool check - now users can vote even if they haven't joined the pool
     return stateMatches && hasVotes
   }
 
@@ -797,7 +854,7 @@ export default function ArenaDetailPage() {
                 onClick={() => handleVoteSelection(player.address)}
               >
                 <div className="flex items-center">
-                  {/* Profil Resmi */}
+                  {/* Profile Image */}
                   <div className="w-10 h-10 rounded-full overflow-hidden mr-4">
                     <img
                       src={player.profile_image || `https://api.dicebear.com/7.x/avatars/svg?seed=${player.address}`}
@@ -848,7 +905,7 @@ export default function ArenaDetailPage() {
 
         <TabsContent value="arena">
           <div className="space-y-6">
-            {/* Filtreler */}
+            {/* Filters */}
             <div className="flex flex-wrap gap-3">
               <Button
                 variant={filter === "all" ? "default" : "outline"}
@@ -858,10 +915,10 @@ export default function ArenaDetailPage() {
               >
                 All
               </Button>
-              {/* ...diğer filtre butonları... */}
+              {/* ...other filter buttons... */}
             </div>
 
-            {/* Arena Candidates başlığı */}
+            {/* Arena Candidates heading */}
             <div className="space-y-4">
               <h2 className="text-xl font-bold text-heading">Arena Candidates</h2>
               <p className="text-sm text-primary/60">
@@ -870,7 +927,7 @@ export default function ArenaDetailPage() {
               </p>
             </div>
 
-            {/* Betting uyarısı */}
+            {/* Betting warning */}
             {pool?.state !== "Betting" && (
               <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
                 <div className="flex items-center gap-2 text-yellow-500">
@@ -883,11 +940,11 @@ export default function ArenaDetailPage() {
               </div>
             )}
 
-            {/* Oyuncu kartları grid */}
+            {/* Player cards grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
               {filteredPlayers().map((player, index) => (
                 <div key={player.address} className="relative group">
-                  {/* Ana kart */}
+                  {/* Main card */}
                   <PlayerCard
                     player={{
                       twitter_username: player.twitter_username || `player_${player.address.slice(2,6)}`,
@@ -904,7 +961,7 @@ export default function ArenaDetailPage() {
                     }}
                   />
 
-                  {/* Place Bet butonu için stabil pozisyonlama */}
+                  {/* Stable positioning for Place Bet button */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
                     <Button
                       className="w-[100px] py-1 text-xs bg-primary/90 hover:bg-primary 
@@ -998,7 +1055,7 @@ export default function ArenaDetailPage() {
                             let rewardPercent = "0%"
                             let rewardAmount = "0"
 
-                            // Kontrat verilerine göre ödül yüzdesini belirle
+                            // Determine reward percentage based on contract data
                             if (rank === 1) rewardPercent = "35%"
                             else if (rank === 2) rewardPercent = "25%"
                             else if (rank === 3) rewardPercent = "15%"
@@ -1006,12 +1063,12 @@ export default function ArenaDetailPage() {
                             else if (rank === 5) rewardPercent = "5%"
                             else rewardPercent = "2%"
 
-                            // Toplam havuz miktarını hesapla
+                            // Calculate total pool amount
                             const totalPoolAmount = pool?.totalEntranceFees
                               ? Number(ethers.formatEther(pool.totalEntranceFees.toString()))
                               : 0
 
-                            // Ödül miktarını hesapla
+                            // Calculate reward amount
                             const rewardPercentValue = Number.parseFloat(rewardPercent) / 100
                             rewardAmount = (totalPoolAmount * rewardPercentValue).toFixed(4)
 
@@ -1042,7 +1099,7 @@ export default function ArenaDetailPage() {
                                   </div>
                                   <div className="text-right">
                                     <p className="font-bold text-lg text-primary">{rewardPercent}</p>
-                                    <p className="text-sm text-primary/80">{rewardAmount} TH</p>
+                                    <p className="text-sm text-primary/80">{rewardAmount} MON</p>
                                   </div>
                                 </div>
                               </div>
@@ -1096,11 +1153,11 @@ export default function ArenaDetailPage() {
                         </div>
                       </div>
 
-                      {/* Örnek bet kazananları */}
+                      {/* Example bet winners */}
                       <div className="space-y-3 mt-6">
                         <h4 className="font-medium text-primary">Top Bet Winners</h4>
 
-                        {/* Örnek bet kazananları - gerçek veriler kontrat entegrasyonu ile değiştirilmeli */}
+                        {/* Sample bet winners - should be replaced with real data from contract integration */}
                         <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 mb-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center">
